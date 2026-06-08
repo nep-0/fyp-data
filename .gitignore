@@ -1,0 +1,10 @@
+# config files
+vector-db.json
+api.json
+
+#binaries
+*.exe
+fyp-data
+reconstruct-db
+build-vector-db
+!cmd/*

@@ -1,0 +1,14 @@
+{
+  "embedding_api": {
+    "base_url": "https://api.example.com/v1",
+    "model": "text-embedding-model-name",
+    "api_key": "replace-with-your-api-key",
+    "requests_per_minute": 60
+  },
+  "sqlite_path": "fyp-data.sqlite",
+  "vector_db_path": "theme-vectors",
+  "collection_name": "themes",
+  "request_timeout_seconds": 120,
+  "batch_size": 16,
+  "concurrency": 1
+}

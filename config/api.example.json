@@ -1,0 +1,13 @@
+{
+  "listen_addr": "127.0.0.1:8080",
+  "sqlite_path": "fyp-data.sqlite",
+  "vector_db_path": "theme-vectors",
+  "collection_name": "themes",
+  "embedding_api": {
+    "base_url": "",
+    "model": "",
+    "api_key": "",
+    "requests_per_minute": 60,
+    "request_timeout_seconds": 120
+  }
+}
