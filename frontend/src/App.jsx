@@ -105,6 +105,8 @@ function App() {
         const selectedVisible = data.rows.some((row) => row.id === selectedID)
         if ((!selectedID || !selectedVisible) && data.rows.length > 0) {
           await loadTheme(data.rows[0].id, { silent: true })
+        } else if (data.rows.length === 0) {
+          setSelected(null)
         }
       } catch (err) {
         if (!cancelled) setError(err.message)
@@ -521,7 +523,7 @@ async function fetchThemes({ query, filters, offset, semantic, negativeQuery }) 
   })
   const path = query ? '/search' : '/themes'
   if (query) params.set('q', query)
-  return api(`${path}?${params.toString()}`)
+  return normalizeThemeList(await api(`${path}?${params.toString()}`))
 }
 
 async function fetchFavoriteThemes(favoriteIds) {
@@ -541,6 +543,15 @@ function matchesFilters(theme, filters) {
     if (key === 'theme_type') return theme.themeType === value
     return true
   })
+}
+
+function normalizeThemeList(data) {
+  const rows = Array.isArray(data.rows) ? data.rows : []
+  return {
+    ...data,
+    rows,
+    total: Number.isFinite(data.total) ? data.total : rows.length,
+  }
 }
 
 async function api(path) {
