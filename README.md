@@ -5,6 +5,7 @@ Utilities and a small REST service for reconstructing FYP theme data from JSON f
 ## Requirements
 
 - Go 1.26+
+- Node.js and npm for the frontend
 - JSON source files under `data/`
 - An OpenAI-compatible embeddings API for vector search
 
@@ -125,6 +126,36 @@ If `embedding_api` is left blank, all SQLite browsing endpoints work and semanti
 
 Theme responses keep raw coded fields and also include a `labels` object for resolved dictionary labels where available. For example, `themeSubjectArea: "3"` is accompanied by `labels.themeSubjectArea`.
 
+## Run The Frontend
+
+The frontend is a separate Vite React project under `frontend/`. It provides a friendly theme search interface with filters, semantic search, an optional negative prompt, and a theme detail view.
+
+Install frontend dependencies:
+
+```bash
+cd frontend
+npm install
+```
+
+During development, keep the REST API running on `127.0.0.1:8080` and start the Vite dev server:
+
+```bash
+npm run dev
+```
+
+Vite proxies API calls to the Go service, so the development frontend is available at the local URL printed by Vite, usually `http://127.0.0.1:5173/`.
+
+To serve the frontend from the Go REST service, build the frontend first:
+
+```bash
+cd frontend
+npm run build
+cd ..
+go run . -config config/api.json
+```
+
+The Go service serves `frontend/dist` for non-API routes. After the build, open `http://127.0.0.1:8080/`.
+
 ## API Documentation
 
 All endpoints return JSON.
@@ -166,6 +197,7 @@ limit         Page size, 1-200. Default: 50
 offset        Row offset. Default: 0
 state         Filter by themeState
 subject_area  Filter by themeSubjectArea
+programme     Filter by one value in themeProgramme
 teacher_id    Filter by themeTeacherId
 project_type  Filter by themeProjectType
 theme_type    Filter by themeType
@@ -174,7 +206,7 @@ theme_type    Filter by themeType
 Example:
 
 ```bash
-curl 'http://127.0.0.1:8080/themes?limit=10&state=02&subject_area=3'
+curl 'http://127.0.0.1:8080/themes?limit=10&subject_area=3&programme=1'
 ```
 
 Response:
@@ -257,15 +289,21 @@ Performs exact SQLite text search over theme title, project description, teacher
 Query parameters:
 
 ```text
-q       Required search text
-limit   Page size, 1-100. Default: 25
-offset  Row offset. Default: 0
+q             Required search text
+limit         Page size, 1-100. Default: 25
+offset        Row offset. Default: 0
+state         Filter by themeState
+subject_area  Filter by themeSubjectArea
+programme     Filter by one value in themeProgramme
+teacher_id    Filter by themeTeacherId
+project_type  Filter by themeProjectType
+theme_type    Filter by themeType
 ```
 
 Example:
 
 ```bash
-curl 'http://127.0.0.1:8080/search?q=tomato&limit=5'
+curl 'http://127.0.0.1:8080/search?q=tomato&programme=1&limit=5'
 ```
 
 ### `GET /semantic-search`
@@ -316,6 +354,7 @@ Response:
 
 ```bash
 go test ./...
+cd frontend && npm run lint && npm run build
 ```
 
 The working embedding config may contain secrets. Keep `config/vector-db.json` and `config/api.json` private if they contain API keys.
