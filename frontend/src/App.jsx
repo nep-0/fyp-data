@@ -11,12 +11,14 @@ import {
   MinusCircle,
   Search,
   Sparkles,
+  Star,
   User,
   X,
 } from 'lucide-react'
 import './App.css'
 
 const PAGE_SIZE = 12
+const FAVORITES_KEY = 'fyp-theme-favorites'
 
 const FILTER_DEFS = [
   { key: 'subject_area', dictType: 'theme_subject_area', label: 'Subject area' },
@@ -39,9 +41,12 @@ function App() {
   const [results, setResults] = useState({ rows: [], total: 0 })
   const [selected, setSelected] = useState(null)
   const selectedRef = useRef(null)
+  const [favoriteIds, setFavoriteIds] = useState(() => readFavorites())
+  const [showFavorites, setShowFavorites] = useState(false)
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState('')
+  const favoriteKey = showFavorites ? favoriteIds.join(',') : ''
 
   useEffect(() => {
     selectedRef.current = selected
@@ -85,13 +90,15 @@ function App() {
       setLoading(true)
       setError('')
       try {
-        const data = await fetchThemes({
-          query: submittedQuery,
-          filters,
-          offset,
-          semantic,
-          negativeQuery: submittedNegativeQuery,
-        })
+        const data = showFavorites
+          ? await fetchFavoriteThemes(favoriteKey ? favoriteKey.split(',') : [])
+          : await fetchThemes({
+              query: submittedQuery,
+              filters,
+              offset,
+              semantic,
+              negativeQuery: submittedNegativeQuery,
+            })
         if (cancelled) return
         setResults(data)
         const selectedID = selectedRef.current?.id
@@ -110,10 +117,11 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [submittedQuery, submittedNegativeQuery, filters, offset, semantic])
+  }, [submittedQuery, submittedNegativeQuery, filters, offset, semantic, showFavorites, favoriteKey])
 
   const page = Math.floor(offset / PAGE_SIZE) + 1
   const totalPages = Math.max(1, Math.ceil((results.total || results.rows.length || 0) / PAGE_SIZE))
+  const favoriteCount = favoriteIds.length
   const activeFilters = useMemo(
     () => Object.entries(filters).filter(([, value]) => value),
     [filters],
@@ -128,6 +136,7 @@ function App() {
 
   function updateFilter(key, value) {
     setOffset(0)
+    setShowFavorites(false)
     setFilters((current) => ({ ...current, [key]: value }))
   }
 
@@ -135,7 +144,19 @@ function App() {
     setQuery('')
     setSubmittedQuery('')
     setSubmittedNegativeQuery('')
+    setShowFavorites(false)
     setOffset(0)
+  }
+
+  function toggleFavorite(id) {
+    setFavoriteIds((current) => {
+      const idString = String(id)
+      const next = current.includes(idString)
+        ? current.filter((item) => item !== idString)
+        : [idString, ...current]
+      writeFavorites(next)
+      return next
+    })
   }
 
   async function loadTheme(id, options = {}) {
@@ -263,29 +284,49 @@ function App() {
         <div className="results-pane">
           <div className="pane-heading">
             <div>
-              <h2>{submittedQuery ? `Results for "${submittedQuery}"` : 'Available themes'}</h2>
-              <p>{loading ? 'Searching themes...' : resultSummary(results, semantic)}</p>
+              <h2>
+                {showFavorites
+                  ? 'Favorite themes'
+                  : submittedQuery
+                    ? `Results for "${submittedQuery}"`
+                    : 'Available themes'}
+              </h2>
+              <p>{loading ? 'Searching themes...' : resultSummary(results, semantic, showFavorites)}</p>
             </div>
-            <div className="pager">
+            <div className="result-actions">
+              <button
+                type="button"
+                className={`favorites-toggle ${showFavorites ? 'active' : ''}`}
+                onClick={() => {
+                  setOffset(0)
+                  setShowFavorites((current) => !current)
+                }}
+              >
+                <Star size={16} aria-hidden="true" />
+                Favorites
+                <span>{favoriteCount}</span>
+              </button>
+              <div className="pager">
               <button
                 type="button"
                 className="icon-button"
-                disabled={offset === 0 || semantic}
+                disabled={showFavorites || offset === 0 || semantic}
                 onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
                 aria-label="Previous page"
               >
                 <ChevronLeft size={18} aria-hidden="true" />
               </button>
-              <span>{semantic ? 'Top matches' : `${page} / ${totalPages}`}</span>
+              <span>{showFavorites ? 'Saved' : semantic ? 'Top matches' : `${page} / ${totalPages}`}</span>
               <button
                 type="button"
                 className="icon-button"
-                disabled={semantic || offset + PAGE_SIZE >= results.total}
+                disabled={showFavorites || semantic || offset + PAGE_SIZE >= results.total}
                 onClick={() => setOffset(offset + PAGE_SIZE)}
                 aria-label="Next page"
               >
                 <ChevronRight size={18} aria-hidden="true" />
               </button>
+              </div>
             </div>
           </div>
 
@@ -302,51 +343,72 @@ function App() {
                   key={`${item.id}-${item.similarity || ''}`}
                   item={item}
                   active={selected?.id === item.id}
+                  favorite={favoriteIds.includes(String(item.id))}
                   onClick={() => loadTheme(item.id)}
+                  onToggleFavorite={() => toggleFavorite(item.id)}
                 />
               ))}
               {results.rows.length === 0 && (
                 <div className="empty-state">
                   <BookOpen aria-hidden="true" />
-                  <h3>No matching themes</h3>
-                  <p>Try a broader keyword or remove one of the filters.</p>
+                  <h3>{showFavorites ? 'No favorite themes yet' : 'No matching themes'}</h3>
+                  <p>
+                    {showFavorites
+                      ? 'Use the star on any theme to save it here.'
+                      : 'Try a broader keyword or remove one of the filters.'}
+                  </p>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <ThemeDetail theme={selected} loading={detailLoading} />
+        <ThemeDetail
+          theme={selected}
+          loading={detailLoading}
+          favorite={selected ? favoriteIds.includes(String(selected.id)) : false}
+          onToggleFavorite={selected ? () => toggleFavorite(selected.id) : undefined}
+        />
       </section>
     </main>
   )
 }
 
-function ThemeCard({ item, active, onClick }) {
+function ThemeCard({ item, active, favorite, onClick, onToggleFavorite }) {
   const theme = item.theme || item
   return (
-    <button type="button" className={`theme-card ${active ? 'active' : ''}`} onClick={onClick}>
-      <div className="card-topline">
-        <span>{labelFor(theme, 'themeSubjectArea') || 'Uncategorized'}</span>
-        {item.similarity != null && <strong>{Math.round(item.similarity * 100)}% match</strong>}
-      </div>
-      <h3>{theme.themeTitle || 'Untitled theme'}</h3>
-      <p className="card-description">{plainText(theme.themeProjectDescription)}</p>
-      <div className="card-meta">
-        <span>
-          <User size={15} aria-hidden="true" />
-          {theme.teacherPinyin || theme.teacherName || 'Unknown teacher'}
-        </span>
-        <span>
-          <GraduationCap size={15} aria-hidden="true" />
-          {labelFor(theme, 'themeProjectType') || 'Project'}
-        </span>
-      </div>
-    </button>
+    <article className={`theme-card ${active ? 'active' : ''}`}>
+      <button type="button" className="theme-card-main" onClick={onClick}>
+        <div className="card-topline">
+          <span>{labelFor(theme, 'themeSubjectArea') || 'Uncategorized'}</span>
+          {item.similarity != null && <strong>{Math.round(item.similarity * 100)}% match</strong>}
+        </div>
+        <h3>{theme.themeTitle || 'Untitled theme'}</h3>
+        <p className="card-description">{plainText(theme.themeProjectDescription)}</p>
+        <div className="card-meta">
+          <span>
+            <User size={15} aria-hidden="true" />
+            {theme.teacherPinyin || theme.teacherName || 'Unknown teacher'}
+          </span>
+          <span>
+            <GraduationCap size={15} aria-hidden="true" />
+            {labelFor(theme, 'themeProjectType') || 'Project'}
+          </span>
+        </div>
+      </button>
+      <button
+        type="button"
+        className={`favorite-button ${favorite ? 'active' : ''}`}
+        onClick={onToggleFavorite}
+        aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+      >
+        <Star size={18} aria-hidden="true" />
+      </button>
+    </article>
   )
 }
 
-function ThemeDetail({ theme, loading }) {
+function ThemeDetail({ theme, loading, favorite, onToggleFavorite }) {
   if (loading) {
     return (
       <aside className="detail-pane center-detail">
@@ -374,7 +436,17 @@ function ThemeDetail({ theme, loading }) {
     <aside className="detail-pane">
       <div className="detail-header">
         <p>{labelFor(theme, 'themeSubjectAreaSub') || labelFor(theme, 'themeSubjectArea')}</p>
-        <h2>{theme.themeTitle || 'Untitled theme'}</h2>
+        <div className="detail-title-row">
+          <h2>{theme.themeTitle || 'Untitled theme'}</h2>
+          <button
+            type="button"
+            className={`favorite-button detail-favorite ${favorite ? 'active' : ''}`}
+            onClick={onToggleFavorite}
+            aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Star size={19} aria-hidden="true" />
+          </button>
+        </div>
         <div className="badge-row">
           {badges.map((badge) => (
             <span key={badge}>{badge}</span>
@@ -452,6 +524,14 @@ async function fetchThemes({ query, filters, offset, semantic, negativeQuery }) 
   return api(`${path}?${params.toString()}`)
 }
 
+async function fetchFavoriteThemes(favoriteIds) {
+  const rows = await Promise.all(favoriteIds.map((id) => api(`/themes/${encodeURIComponent(id)}`)))
+  return {
+    rows,
+    total: rows.length,
+  }
+}
+
 function matchesFilters(theme, filters) {
   return Object.entries(filters).every(([key, value]) => {
     if (!value) return true
@@ -515,10 +595,25 @@ function filterValue(rows = [], value) {
   return row ? displayDictionary(row) : value
 }
 
-function resultSummary(results, semantic) {
+function resultSummary(results, semantic, showFavorites) {
+  if (showFavorites) return `${results.rows.length} saved ${results.rows.length === 1 ? 'theme' : 'themes'}`
   if (semantic) return `${results.rows.length} strongest matches`
   const total = results.total || 0
   return `${total} ${total === 1 ? 'theme' : 'themes'} found`
+}
+
+function readFavorites() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(FAVORITES_KEY) || '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((id) => String(id)).filter(Boolean)
+  } catch {
+    return []
+  }
+}
+
+function writeFavorites(ids) {
+  window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(ids))
 }
 
 export default App
