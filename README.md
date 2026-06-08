@@ -87,6 +87,8 @@ Each vector document embeds:
 
 Metadata includes SQLite ID, theme ID, teacher, department, subject area, source file, and embedded field names.
 
+The existing vector database in this repository was generated with `Qwen3-Embedding-8B`. If you use the existing `theme-vectors` database, configure the REST API with the same embedding model. Query embeddings must be produced by the same model as the stored document embeddings.
+
 ## Run The REST API
 
 Copy and edit the API config:

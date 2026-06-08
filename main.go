@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -228,6 +229,24 @@ func (a *app) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /dictionary-types", a.handleDictionaryTypes)
 	mux.HandleFunc("GET /search", a.handleSearch)
 	mux.HandleFunc("GET /semantic-search", a.handleSemanticSearch)
+	mux.HandleFunc("GET /", handleFrontend)
+}
+
+func handleFrontend(w http.ResponseWriter, r *http.Request) {
+	dist := filepath.Join("frontend", "dist")
+	assetPath := strings.TrimPrefix(filepath.Clean(r.URL.Path), string(os.PathSeparator))
+	requested := filepath.Join(dist, assetPath)
+	if info, err := os.Stat(requested); err == nil && !info.IsDir() {
+		http.ServeFile(w, r, requested)
+		return
+	}
+
+	index := filepath.Join(dist, "index.html")
+	if _, err := os.Stat(index); err != nil {
+		writeError(w, http.StatusNotFound, errors.New("frontend build not found; run npm run build in frontend"))
+		return
+	}
+	http.ServeFile(w, r, index)
 }
 
 func (a *app) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -387,8 +406,14 @@ func (a *app) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	like := "%" + q + "%"
-	where := `(themeTitle LIKE ? OR themeProjectDescription LIKE ? OR teacherName LIKE ? OR deptName LIKE ?)`
+	searchWhere := `(themeTitle LIKE ? OR themeProjectDescription LIKE ? OR teacherName LIKE ? OR deptName LIKE ?)`
 	args := []any{like, like, like, like}
+	filterWhere, filterArgs := themeFilters(r)
+	where := searchWhere
+	if filterWhere != "" {
+		where += " AND " + filterWhere
+		args = append(args, filterArgs...)
+	}
 	total, err := countRows(r.Context(), a.sqlite, "themes", where, args)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
@@ -745,6 +770,10 @@ func themeFilters(r *http.Request) (string, []any) {
 			clauses = append(clauses, column+" = ?")
 			args = append(args, v)
 		}
+	}
+	if v := strings.TrimSpace(r.URL.Query().Get("programme")); v != "" {
+		clauses = append(clauses, "',' || themeProgramme || ',' LIKE ?")
+		args = append(args, "%,"+v+",%")
 	}
 	return strings.Join(clauses, " AND "), args
 }
