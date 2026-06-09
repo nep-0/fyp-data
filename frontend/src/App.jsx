@@ -126,6 +126,7 @@ function App() {
   const page = Math.floor(offset / PAGE_SIZE) + 1
   const totalPages = Math.max(1, Math.ceil((results.total || results.rows.length || 0) / PAGE_SIZE))
   const favoriteCount = favoriteIds.length
+  const semanticActive = semantic && Boolean(submittedQuery)
   const activeFilters = useMemo(
     () => Object.entries(filters).filter(([, value]) => value),
     [filters],
@@ -300,7 +301,7 @@ function App() {
                     ? `Results for "${submittedQuery}"`
                     : 'Available themes'}
               </h2>
-              <p>{loading ? 'Searching themes...' : resultSummary(results, semantic, showFavorites)}</p>
+              <p>{loading ? 'Searching themes...' : resultSummary(results, semanticActive, showFavorites)}</p>
             </div>
             <div className="result-actions">
               <button
@@ -319,17 +320,17 @@ function App() {
                 <button
                   type="button"
                   className="icon-button"
-                  disabled={showFavorites || offset === 0 || semantic}
+                  disabled={showFavorites || offset === 0 || semanticActive}
                   onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
                   aria-label="Previous page"
                 >
                   <ChevronLeft size={18} aria-hidden="true" />
                 </button>
-                <span>{showFavorites ? 'Saved' : semantic ? 'Top matches' : `${page} / ${totalPages}`}</span>
+                <span>{showFavorites ? 'Saved' : semanticActive ? 'Top matches' : `${page} / ${totalPages}`}</span>
                 <button
                   type="button"
                   className="icon-button"
-                  disabled={showFavorites || semantic || offset + PAGE_SIZE >= results.total}
+                  disabled={showFavorites || semanticActive || offset + PAGE_SIZE >= results.total}
                   onClick={() => setOffset(offset + PAGE_SIZE)}
                   aria-label="Next page"
                 >
