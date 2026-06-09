@@ -42,6 +42,7 @@ function App() {
   const [results, setResults] = useState({ rows: [], total: 0 })
   const [selected, setSelected] = useState(null)
   const selectedRef = useRef(null)
+  const [detailOpen, setDetailOpen] = useState(false)
   const [favoriteIds, setFavoriteIds] = useState(() => readFavorites())
   const [showFavorites, setShowFavorites] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -107,6 +108,7 @@ function App() {
           selectTheme(data.rows[0])
         } else if (data.rows.length === 0) {
           setSelected(null)
+          setDetailOpen(false)
         }
       } catch (err) {
         if (!cancelled) setError(err.message)
@@ -161,8 +163,9 @@ function App() {
     })
   }
 
-  function selectTheme(theme) {
+  function selectTheme(theme, options = {}) {
     setSelected(theme)
+    if (options.open) setDetailOpen(true)
   }
 
   return (
@@ -350,7 +353,7 @@ function App() {
                   item={item}
                   active={selected?.id === item.id}
                   favorite={favoriteIds.includes(String(item.id))}
-                  onClick={() => selectTheme(item)}
+                  onClick={() => selectTheme(item, { open: true })}
                   onToggleFavorite={() => toggleFavorite(item.id)}
                 />
               ))}
@@ -369,11 +372,17 @@ function App() {
           )}
         </div>
 
-        <ThemeDetail
-          theme={selected}
-          favorite={selected ? favoriteIds.includes(String(selected.id)) : false}
-          onToggleFavorite={selected ? () => toggleFavorite(selected.id) : undefined}
-        />
+        <div
+          className={`detail-overlay ${selected && detailOpen ? 'open' : ''}`}
+          onClick={() => setDetailOpen(false)}
+        >
+          <ThemeDetail
+            theme={selected}
+            favorite={selected ? favoriteIds.includes(String(selected.id)) : false}
+            onClose={() => setDetailOpen(false)}
+            onToggleFavorite={selected ? () => toggleFavorite(selected.id) : undefined}
+          />
+        </div>
       </section>
     </main>
   )
@@ -413,7 +422,7 @@ function ThemeCard({ item, active, favorite, onClick, onToggleFavorite }) {
   )
 }
 
-function ThemeDetail({ theme, favorite, onToggleFavorite }) {
+function ThemeDetail({ theme, favorite, onClose, onToggleFavorite }) {
   if (!theme) {
     return (
       <aside className="detail-pane center-detail">
@@ -430,7 +439,10 @@ function ThemeDetail({ theme, favorite, onToggleFavorite }) {
   ].filter(Boolean)
 
   return (
-    <aside className="detail-pane">
+    <aside className="detail-pane" onClick={(event) => event.stopPropagation()}>
+      <button type="button" className="detail-close" onClick={onClose} aria-label="Close theme details">
+        <X size={19} aria-hidden="true" />
+      </button>
       <div className="detail-header">
         <p>{labelFor(theme, 'themeSubjectAreaSub') || labelFor(theme, 'themeSubjectArea')}</p>
         <div className="detail-title-row">
