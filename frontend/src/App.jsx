@@ -44,7 +44,6 @@ function App() {
   const [favoriteIds, setFavoriteIds] = useState(() => readFavorites())
   const [showFavorites, setShowFavorites] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState('')
   const favoriteKey = showFavorites ? favoriteIds.join(',') : ''
 
@@ -104,7 +103,7 @@ function App() {
         const selectedID = selectedRef.current?.id
         const selectedVisible = data.rows.some((row) => row.id === selectedID)
         if ((!selectedID || !selectedVisible) && data.rows.length > 0) {
-          await loadTheme(data.rows[0].id, { silent: true })
+          selectTheme(data.rows[0])
         } else if (data.rows.length === 0) {
           setSelected(null)
         }
@@ -161,17 +160,8 @@ function App() {
     })
   }
 
-  async function loadTheme(id, options = {}) {
-    if (!options.silent) setDetailLoading(true)
-    setError('')
-    try {
-      const data = await api(`/themes/${id}`)
-      setSelected(data)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setDetailLoading(false)
-    }
+  function selectTheme(theme) {
+    setSelected(theme)
   }
 
   return (
@@ -346,7 +336,7 @@ function App() {
                   item={item}
                   active={selected?.id === item.id}
                   favorite={favoriteIds.includes(String(item.id))}
-                  onClick={() => loadTheme(item.id)}
+                  onClick={() => selectTheme(item)}
                   onToggleFavorite={() => toggleFavorite(item.id)}
                 />
               ))}
@@ -367,7 +357,6 @@ function App() {
 
         <ThemeDetail
           theme={selected}
-          loading={detailLoading}
           favorite={selected ? favoriteIds.includes(String(selected.id)) : false}
           onToggleFavorite={selected ? () => toggleFavorite(selected.id) : undefined}
         />
@@ -410,15 +399,7 @@ function ThemeCard({ item, active, favorite, onClick, onToggleFavorite }) {
   )
 }
 
-function ThemeDetail({ theme, loading, favorite, onToggleFavorite }) {
-  if (loading) {
-    return (
-      <aside className="detail-pane center-detail">
-        <Loader2 className="spin" aria-hidden="true" />
-      </aside>
-    )
-  }
-
+function ThemeDetail({ theme, favorite, onToggleFavorite }) {
   if (!theme) {
     return (
       <aside className="detail-pane center-detail">
