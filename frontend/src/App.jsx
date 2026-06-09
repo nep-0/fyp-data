@@ -38,6 +38,7 @@ function App() {
   const [submittedNegativeQuery, setSubmittedNegativeQuery] = useState('')
   const [negativeOpen, setNegativeOpen] = useState(false)
   const [semantic, setSemantic] = useState(false)
+  const [includeMissing, setIncludeMissing] = useState(false)
   const [offset, setOffset] = useState(0)
   const [results, setResults] = useState({ rows: [], total: 0 })
   const [selected, setSelected] = useState(null)
@@ -99,6 +100,7 @@ function App() {
               offset,
               semantic,
               negativeQuery: submittedNegativeQuery,
+              includeMissing,
             })
         if (cancelled) return
         setResults(data)
@@ -121,7 +123,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [submittedQuery, submittedNegativeQuery, filters, offset, semantic, showFavorites, favoriteKey])
+  }, [submittedQuery, submittedNegativeQuery, filters, offset, semantic, includeMissing, showFavorites, favoriteKey])
 
   const page = Math.floor(offset / PAGE_SIZE) + 1
   const totalPages = Math.max(1, Math.ceil((results.total || results.rows.length || 0) / PAGE_SIZE))
@@ -286,6 +288,18 @@ function App() {
               <Sparkles size={17} aria-hidden="true" />
               Semantic search
             </label>
+
+            <label className="include-missing-toggle">
+              <input
+                type="checkbox"
+                checked={includeMissing}
+                onChange={(event) => {
+                  setOffset(0)
+                  setIncludeMissing(event.target.checked)
+                }}
+              />
+              Include missing
+            </label>
           </div>
         </div>
 
@@ -365,6 +379,7 @@ function App() {
                   item={item}
                   active={selected?.id === item.id}
                   favorite={favoriteIds.includes(String(item.id))}
+                  missing={isMissing(item)}
                   onClick={() => selectTheme(item, { open: true })}
                   onToggleFavorite={() => toggleFavorite(item.id)}
                 />
@@ -415,14 +430,17 @@ function App() {
   )
 }
 
-function ThemeCard({ item, active, favorite, onClick, onToggleFavorite }) {
+function ThemeCard({ item, active, favorite, missing, onClick, onToggleFavorite }) {
   const theme = item.theme || item
   return (
-    <article className={`theme-card ${active ? 'active' : ''}`}>
+    <article className={`theme-card ${active ? 'active' : ''} ${missing ? 'missing' : ''}`}>
       <button type="button" className="theme-card-main" onClick={onClick}>
         <div className="card-topline">
           <span>{labelFor(theme, 'themeSubjectArea') || 'Uncategorized'}</span>
-          {item.similarity != null && <strong>{Math.round(item.similarity * 100)}% match</strong>}
+          <div>
+            {missing && <em>Missing</em>}
+            {item.similarity != null && <strong>{Math.round(item.similarity * 100)}% match</strong>}
+          </div>
         </div>
         <h3>{theme.themeTitle || 'Untitled theme'}</h3>
         <p className="card-description">{plainText(theme.themeProjectDescription)}</p>
@@ -463,10 +481,11 @@ function ThemeDetail({ theme, favorite, onClose, onToggleFavorite }) {
     labelFor(theme, 'themeType'),
     labelFor(theme, 'themeProjectType'),
     labelFor(theme, 'themeState'),
+    isMissing(theme) ? 'Missing' : '',
   ].filter(Boolean)
 
   return (
-    <aside className="detail-pane" onClick={(event) => event.stopPropagation()}>
+    <aside className={`detail-pane ${isMissing(theme) ? 'missing' : ''}`} onClick={(event) => event.stopPropagation()}>
       <button type="button" className="detail-close" onClick={onClose} aria-label="Close theme details">
         <X size={19} aria-hidden="true" />
       </button>
@@ -537,7 +556,7 @@ function RichText({ html }) {
   return <div className="rich-text" dangerouslySetInnerHTML={{ __html: clean }} />
 }
 
-async function fetchThemes({ query, filters, offset, semantic, negativeQuery }) {
+async function fetchThemes({ query, filters, offset, semantic, negativeQuery, includeMissing }) {
   if (semantic && query) {
     const params = new URLSearchParams({ q: query, limit: String(PAGE_SIZE) })
     if (negativeQuery) params.set('negative', negativeQuery)
@@ -545,6 +564,7 @@ async function fetchThemes({ query, filters, offset, semantic, negativeQuery }) 
     const rows = (data.rows || [])
       .map((row) => ({ ...row.theme, similarity: row.similarity }))
       .filter((theme) => matchesFilters(theme, filters))
+      .filter((theme) => includeMissing || !isMissing(theme))
     return {
       rows,
       total: rows.length,
@@ -555,6 +575,7 @@ async function fetchThemes({ query, filters, offset, semantic, negativeQuery }) 
   Object.entries(filters).forEach(([key, value]) => {
     if (value) params.set(key, value)
   })
+  if (!includeMissing) params.set('missing', 'false')
   const path = query ? '/search' : '/themes'
   if (query) params.set('q', query)
   return normalizeThemeList(await api(`${path}?${params.toString()}`))
@@ -577,6 +598,10 @@ function matchesFilters(theme, filters) {
     if (key === 'theme_type') return theme.themeType === value
     return true
   })
+}
+
+function isMissing(theme) {
+  return theme?.missing === true || theme?.missing === 1 || theme?.missing === 'true' || theme?.missing === '1'
 }
 
 function normalizeThemeList(data) {

@@ -262,6 +262,23 @@
   white-space: nowrap;
 }
 
+.include-missing-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  color: #991b1b;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.include-missing-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: #dc2626;
+}
+
 .semantic-toggle input {
   width: 18px;
   height: 18px;
@@ -471,6 +488,12 @@
   box-shadow: 0 10px 24px rgba(15, 118, 110, 0.12);
 }
 
+.theme-card.missing:hover,
+.theme-card.missing.active {
+  border-color: #dc2626;
+  box-shadow: 0 10px 24px rgba(220, 38, 38, 0.14);
+}
+
 .theme-card-main {
   display: grid;
   gap: 10px;
@@ -524,9 +547,31 @@
   text-transform: uppercase;
 }
 
+.card-topline > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
 .card-topline strong {
   color: #7c3aed;
   font-weight: 800;
+}
+
+.card-topline em {
+  border: 1px solid #fca5a5;
+  border-radius: 999px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-style: normal;
+  font-weight: 800;
+  padding: 2px 7px;
+  text-transform: none;
+}
+
+.theme-card.missing .card-topline {
+  color: #b91c1c;
 }
 
 .theme-card h3 {
@@ -573,6 +618,15 @@
   position: relative;
   height: 100%;
   background: #ffffff;
+}
+
+.detail-pane.missing .detail-header > p {
+  color: #b91c1c;
+}
+
+.detail-pane.missing .avatar {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .detail-close {
@@ -893,7 +947,8 @@
   }
 
   .select-field,
-  .semantic-toggle {
+  .semantic-toggle,
+  .include-missing-toggle {
     width: 100%;
   }
 
