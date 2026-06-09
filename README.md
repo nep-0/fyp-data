@@ -235,7 +235,7 @@ Response:
 
 ### `GET /themes/{id}`
 
-Returns one theme by SQLite row ID. This endpoint includes `raw_json`.
+Returns one theme by SQLite row ID. The database stores `raw_json`, but API responses omit it to keep payloads small.
 
 Example:
 
