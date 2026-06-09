@@ -111,7 +111,8 @@ Example config:
     "model": "",
     "api_key": "",
     "requests_per_minute": 60,
-    "request_timeout_seconds": 120
+    "request_timeout_seconds": 120,
+    "cache_size": 256
   }
 }
 ```
@@ -123,6 +124,8 @@ go run . -config config/api.json
 ```
 
 If `embedding_api` is left blank, all SQLite browsing endpoints work and semantic search returns `503`. Fill in `embedding_api` to enable `/semantic-search`.
+
+`embedding_api.cache_size` controls an in-memory LRU cache for query embeddings. The default is `256` entries; set it to `-1` to disable caching.
 
 Theme responses keep raw coded fields and also include a `labels` object for resolved dictionary labels where available. For example, `themeSubjectArea: "3"` is accompanied by `labels.themeSubjectArea`.
 

@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
 	"fyp-data/config"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 type Client struct {
@@ -20,9 +22,14 @@ type Client struct {
 	apiKey  string
 	client  *http.Client
 	limiter <-chan time.Time
+	cache   *lru.Cache[string, []float32]
 }
 
 func NewClient(cfg config.Embedding) *Client {
+	var cache *lru.Cache[string, []float32]
+	if cfg.CacheSize > 0 {
+		cache, _ = lru.New[string, []float32](cfg.CacheSize)
+	}
 	return &Client{
 		baseURL: strings.TrimRight(cfg.BaseURL, "/"),
 		model:   cfg.Model,
@@ -31,10 +38,18 @@ func NewClient(cfg config.Embedding) *Client {
 			Timeout: time.Duration(cfg.RequestTimeoutSecs) * time.Second,
 		},
 		limiter: rateLimiter(cfg.RequestsPerMinute),
+		cache:   cache,
 	}
 }
 
 func (c *Client) Embed(ctx context.Context, text string) ([]float32, error) {
+	cacheKey := c.baseURL + "\x00" + c.model + "\x00" + text
+	if c.cache != nil {
+		if cached, ok := c.cache.Get(cacheKey); ok {
+			return slices.Clone(cached), nil
+		}
+	}
+
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -76,7 +91,11 @@ func (c *Client) Embed(ctx context.Context, text string) ([]float32, error) {
 	if len(parsed.Data) == 0 || len(parsed.Data[0].Embedding) == 0 {
 		return nil, errors.New("embedding API response did not contain an embedding")
 	}
-	return parsed.Data[0].Embedding, nil
+	embedding := parsed.Data[0].Embedding
+	if c.cache != nil {
+		c.cache.Add(cacheKey, slices.Clone(embedding))
+	}
+	return embedding, nil
 }
 
 func rateLimiter(requestsPerMinute int) <-chan time.Time {

@@ -8,6 +8,7 @@
     "model": "",
     "api_key": "",
     "requests_per_minute": 60,
-    "request_timeout_seconds": 120
+    "request_timeout_seconds": 120,
+    "cache_size": 256
   }
 }

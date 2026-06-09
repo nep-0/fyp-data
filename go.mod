@@ -3,6 +3,7 @@ module fyp-data
 go 1.26.0
 
 require (
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/philippgille/chromem-go v0.7.0
 	modernc.org/sqlite v1.52.0
 )
