@@ -155,7 +155,8 @@
 .chips button,
 .theme-card-main,
 .favorite-button,
-.favorites-toggle {
+.favorites-toggle,
+.page-button {
   font: inherit;
 }
 
@@ -418,6 +419,40 @@
 .theme-list {
   display: grid;
   gap: 12px;
+}
+
+.bottom-pager {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto minmax(120px, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 14px 0 4px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.bottom-pager span {
+  white-space: nowrap;
+}
+
+.page-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #334155;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.page-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .theme-card {
@@ -851,6 +886,10 @@
   .pane-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .bottom-pager {
+    grid-template-columns: 1fr;
   }
 
   .select-field,

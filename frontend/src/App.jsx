@@ -127,6 +127,9 @@ function App() {
   const totalPages = Math.max(1, Math.ceil((results.total || results.rows.length || 0) / PAGE_SIZE))
   const favoriteCount = favoriteIds.length
   const semanticActive = semantic && Boolean(submittedQuery)
+  const canPage = !showFavorites && !semanticActive
+  const canGoPrevious = canPage && offset > 0
+  const canGoNext = canPage && offset + PAGE_SIZE < results.total
   const activeFilters = useMemo(
     () => Object.entries(filters).filter(([, value]) => value),
     [filters],
@@ -167,6 +170,14 @@ function App() {
   function selectTheme(theme, options = {}) {
     setSelected(theme)
     if (options.open) setDetailOpen(true)
+  }
+
+  function goToPreviousPage() {
+    if (canGoPrevious) setOffset(Math.max(0, offset - PAGE_SIZE))
+  }
+
+  function goToNextPage() {
+    if (canGoNext) setOffset(offset + PAGE_SIZE)
   }
 
   return (
@@ -320,8 +331,8 @@ function App() {
                 <button
                   type="button"
                   className="icon-button"
-                  disabled={showFavorites || offset === 0 || semanticActive}
-                  onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                  disabled={!canGoPrevious}
+                  onClick={goToPreviousPage}
                   aria-label="Previous page"
                 >
                   <ChevronLeft size={18} aria-hidden="true" />
@@ -330,8 +341,8 @@ function App() {
                 <button
                   type="button"
                   className="icon-button"
-                  disabled={showFavorites || semanticActive || offset + PAGE_SIZE >= results.total}
-                  onClick={() => setOffset(offset + PAGE_SIZE)}
+                  disabled={!canGoNext}
+                  onClick={goToNextPage}
                   aria-label="Next page"
                 >
                   <ChevronRight size={18} aria-hidden="true" />
@@ -367,6 +378,21 @@ function App() {
                       ? 'Use the star on any theme to save it here.'
                       : 'Try a broader keyword or remove one of the filters.'}
                   </p>
+                </div>
+              )}
+              {canPage && results.rows.length > 0 && (
+                <div className="bottom-pager">
+                  <button type="button" className="page-button" disabled={!canGoPrevious} onClick={goToPreviousPage}>
+                    <ChevronLeft size={18} aria-hidden="true" />
+                    Previous
+                  </button>
+                  <span>
+                    Page {page} of {totalPages}
+                  </span>
+                  <button type="button" className="page-button" disabled={!canGoNext} onClick={goToNextPage}>
+                    Next
+                    <ChevronRight size={18} aria-hidden="true" />
+                  </button>
                 </div>
               )}
             </div>
