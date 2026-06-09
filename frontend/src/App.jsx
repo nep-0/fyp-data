@@ -3,6 +3,7 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Filter,
   GraduationCap,
   Loader2,
@@ -167,8 +168,19 @@ function App() {
   return (
     <main className="app-shell">
       <section className="search-band">
-        <div className="search-copy">
-          <p className="eyebrow">FYP Theme Finder</p>
+        <div className="search-header">
+          <div className="search-copy">
+            <p className="eyebrow">FYP Theme Finder</p>
+          </div>
+          <a
+            className="repo-button"
+            href="https://github.com/nep-0/fyp-data"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ExternalLink size={17} aria-hidden="true" />
+            GitHub
+          </a>
         </div>
 
         <form className="search-box" onSubmit={submitSearch}>
@@ -188,41 +200,6 @@ function App() {
             Search
           </button>
         </form>
-
-        <div className={`negative-search ${negativeOpen ? 'open' : ''}`}>
-          <button
-            type="button"
-            className="negative-toggle"
-            disabled={!semantic || !health?.semantic_available}
-            onClick={() => setNegativeOpen((open) => !open)}
-          >
-            <MinusCircle size={16} aria-hidden="true" />
-            Negative prompt
-          </button>
-          {negativeOpen && (
-            <div className="negative-field">
-              <input
-                value={negativeQuery}
-                disabled={!semantic || !health?.semantic_available}
-                onChange={(event) => setNegativeQuery(event.target.value)}
-                placeholder="Optional negative prompt"
-              />
-              {negativeQuery && (
-                <button
-                  type="button"
-                  className="icon-button"
-                  onClick={() => {
-                    setNegativeQuery('')
-                    setSubmittedNegativeQuery('')
-                  }}
-                  aria-label="Clear negative prompt"
-                >
-                  <X size={16} aria-hidden="true" />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
 
         <div className="toolbar">
           <div className="filter-row">
@@ -245,19 +222,56 @@ function App() {
             ))}
           </div>
 
-          <label className={`semantic-toggle ${!health?.semantic_available ? 'disabled' : ''}`}>
-            <input
-              type="checkbox"
-              checked={semantic}
-              disabled={!health?.semantic_available}
-              onChange={(event) => {
-                setOffset(0)
-                setSemantic(event.target.checked)
-              }}
-            />
-            <Sparkles size={17} aria-hidden="true" />
-            Semantic search
-          </label>
+          <div className="toolbar-actions">
+            <div className={`negative-search ${negativeOpen ? 'open' : ''}`}>
+              <button
+                type="button"
+                className="negative-toggle"
+                disabled={!semantic || !health?.semantic_available}
+                onClick={() => setNegativeOpen((open) => !open)}
+              >
+                <MinusCircle size={16} aria-hidden="true" />
+                Negative prompt
+              </button>
+              {negativeOpen && (
+                <div className="negative-field">
+                  <input
+                    value={negativeQuery}
+                    disabled={!semantic || !health?.semantic_available}
+                    onChange={(event) => setNegativeQuery(event.target.value)}
+                    placeholder="Optional negative prompt"
+                  />
+                  {negativeQuery && (
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={() => {
+                        setNegativeQuery('')
+                        setSubmittedNegativeQuery('')
+                      }}
+                      aria-label="Clear negative prompt"
+                    >
+                      <X size={16} aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <label className={`semantic-toggle ${!health?.semantic_available ? 'disabled' : ''}`}>
+              <input
+                type="checkbox"
+                checked={semantic}
+                disabled={!health?.semantic_available}
+                onChange={(event) => {
+                  setOffset(0)
+                  setSemantic(event.target.checked)
+                }}
+              />
+              <Sparkles size={17} aria-hidden="true" />
+              Semantic search
+            </label>
+          </div>
         </div>
 
         {activeFilters.length > 0 && (
@@ -299,25 +313,25 @@ function App() {
                 <span>{favoriteCount}</span>
               </button>
               <div className="pager">
-              <button
-                type="button"
-                className="icon-button"
-                disabled={showFavorites || offset === 0 || semantic}
-                onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                aria-label="Previous page"
-              >
-                <ChevronLeft size={18} aria-hidden="true" />
-              </button>
-              <span>{showFavorites ? 'Saved' : semantic ? 'Top matches' : `${page} / ${totalPages}`}</span>
-              <button
-                type="button"
-                className="icon-button"
-                disabled={showFavorites || semantic || offset + PAGE_SIZE >= results.total}
-                onClick={() => setOffset(offset + PAGE_SIZE)}
-                aria-label="Next page"
-              >
-                <ChevronRight size={18} aria-hidden="true" />
-              </button>
+                <button
+                  type="button"
+                  className="icon-button"
+                  disabled={showFavorites || offset === 0 || semantic}
+                  onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={18} aria-hidden="true" />
+                </button>
+                <span>{showFavorites ? 'Saved' : semantic ? 'Top matches' : `${page} / ${totalPages}`}</span>
+                <button
+                  type="button"
+                  className="icon-button"
+                  disabled={showFavorites || semantic || offset + PAGE_SIZE >= results.total}
+                  onClick={() => setOffset(offset + PAGE_SIZE)}
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={18} aria-hidden="true" />
+                </button>
               </div>
             </div>
           </div>
