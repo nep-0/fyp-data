@@ -10,6 +10,7 @@ type dictionaryLabel struct {
 type theme struct {
 	ID                      int64          `json:"id"`
 	SourceFile              string         `json:"source_file"`
+	Missing                 bool           `json:"missing"`
 	ThemeSubjectArea        string         `json:"themeSubjectArea"`
 	DelFlag                 string         `json:"delFlag"`
 	Status                  string         `json:"status"`

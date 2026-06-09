@@ -32,7 +32,17 @@ Options:
 -out           SQLite database path. Default: fyp-data.sqlite
 -include-small Also import small.json with p1-p4
 -small-only    Import only small.json for theme rows
+-incremental   Preserve the existing database and update/add imported rows
+-theme-file    Theme page JSON file to import; repeat for multiple files
 ```
+
+Incremental imports preserve existing row IDs when possible. Theme rows are updated by `source_file + themeId`; dictionary rows are updated by `source_file + dictType + dictValue`. This makes it possible to add a new page without rebuilding the whole database:
+
+```bash
+go run ./cmd/reconstruct-db -data data -out fyp-data.sqlite -incremental -theme-file p5.json
+```
+
+In incremental mode, the imported theme page files are treated as the latest complete theme dataset. Imported theme rows are marked `missing = false`; existing theme rows not seen in the latest import are retained and marked `missing = true`.
 
 The generated database contains:
 
@@ -76,9 +86,16 @@ go run ./cmd/build-vector-db -config config/vector-db.json
 Options:
 
 ```text
--config  Vector DB config path. Default: config/vector-db.example.json
--sqlite  Override sqlite_path from config
--out     Override vector_db_path from config
+-config      Vector DB config path. Default: config/vector-db.example.json
+-sqlite      Override sqlite_path from config
+-out         Override vector_db_path from config
+-incremental Preserve the existing vector DB and embed only absent vector documents
+```
+
+Use incremental mode after adding new SQLite rows:
+
+```bash
+go run ./cmd/build-vector-db -config config/vector-db.json -incremental
 ```
 
 Each vector document embeds:
@@ -87,6 +104,8 @@ Each vector document embeds:
 - `themeProjectDescription`
 
 Metadata includes SQLite ID, theme ID, teacher, department, subject area, source file, and embedded field names.
+
+Vector builds read only themes where `missing = false`.
 
 The existing vector database in this repository was generated with `Qwen3-Embedding-8B`. If you use the existing `theme-vectors` database, configure the REST API with the same embedding model. Query embeddings must be produced by the same model as the stored document embeddings.
 
@@ -204,6 +223,7 @@ programme     Filter by one value in themeProgramme
 teacher_id    Filter by themeTeacherId
 project_type  Filter by themeProjectType
 theme_type    Filter by themeType
+missing       Filter by latest-import marker: true/false or 1/0
 ```
 
 Example:
@@ -222,6 +242,7 @@ Response:
   "rows": [
     {
       "id": 1,
+      "missing": false,
       "themeSubjectArea": "3",
       "themeTitle": "...",
       "themeProjectDescription": "...",
@@ -340,6 +361,7 @@ Response:
       "similarity": 0.82,
       "theme": {
         "id": 42,
+        "missing": false,
         "themeTitle": "...",
         "labels": {
           "themeSubjectArea": {

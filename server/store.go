@@ -10,7 +10,7 @@ import (
 )
 
 const themeSelectColumns = `
-	id, source_file, raw_json, themeSubjectArea, delFlag, status, themePrerequisiteSkills,
+	id, source_file, raw_json, missing, themeSubjectArea, delFlag, status, themePrerequisiteSkills,
 	themeProjectDescription, themeProjectType, themeSourceRemarks, themeSourceSub, themeSource,
 	themeSubjectAreaSub, themeId, themeProgramme, themeCommitmentCheck, themeOfficeLocation,
 	themeExpertId, themeCheckTime, themeCheckComment, themeCount, themeTeacherId, themeState,
@@ -80,6 +80,7 @@ func scanThemes(rows *sql.Rows) ([]theme, error) {
 	for rows.Next() {
 		var t theme
 		var raw string
+		var missing int
 		var themeID, themeExpertID, themeCheckTime, themeCount, themeTeacherID, themeProID, indStudentID sql.NullInt64
 		fields := []*string{
 			&t.ThemeSubjectArea, &t.DelFlag, &t.Status, &t.ThemePrerequisiteSkills,
@@ -95,7 +96,7 @@ func scanThemes(rows *sql.Rows) ([]theme, error) {
 		}
 		nulls := make([]sql.NullString, len(fields))
 		dest := []any{
-			&t.ID, &t.SourceFile, &raw, &nulls[0], &nulls[1], &nulls[2], &nulls[3],
+			&t.ID, &t.SourceFile, &raw, &missing, &nulls[0], &nulls[1], &nulls[2], &nulls[3],
 			&nulls[4], &nulls[5], &nulls[6], &nulls[7], &nulls[8], &nulls[9],
 			&themeID, &nulls[10], &nulls[11], &nulls[12], &themeExpertID, &themeCheckTime,
 			&nulls[13], &themeCount, &themeTeacherID, &nulls[14], &nulls[15], &nulls[16],
@@ -109,6 +110,7 @@ func scanThemes(rows *sql.Rows) ([]theme, error) {
 			return nil, err
 		}
 		t.SourceFile = nullString(sql.NullString{String: t.SourceFile, Valid: t.SourceFile != ""})
+		t.Missing = missing != 0
 		for i := range fields {
 			*fields[i] = nullString(nulls[i])
 		}
@@ -178,7 +180,29 @@ func themeFilters(r *http.Request) (string, []any) {
 		clauses = append(clauses, "',' || themeProgramme || ',' LIKE ?")
 		args = append(args, "%,"+v+",%")
 	}
+	if v := firstQueryValue(r, "missing"); v != "" {
+		clauses = append(clauses, "missing = ?")
+		args = append(args, missingFilterValue(v))
+	}
 	return strings.Join(clauses, " AND "), args
+}
+
+func firstQueryValue(r *http.Request, names ...string) string {
+	for _, name := range names {
+		if v := strings.TrimSpace(r.URL.Query().Get(name)); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func missingFilterValue(value string) int {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "y":
+		return 1
+	default:
+		return 0
+	}
 }
 
 func pagination(r *http.Request, defaultLimit, maxLimit int) (int, int, error) {

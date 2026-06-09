@@ -67,14 +67,15 @@ func main() {
 	configPath := flag.String("config", "config/vector-db.example.json", "path to vector database JSON config")
 	sqlitePath := flag.String("sqlite", "", "override SQLite input path from config")
 	outPath := flag.String("out", "", "override vector DB output directory from config")
+	incremental := flag.Bool("incremental", false, "preserve existing vector DB and add only absent vector documents")
 	flag.Parse()
 
-	if err := run(*configPath, *sqlitePath, *outPath); err != nil {
+	if err := run(*configPath, *sqlitePath, *outPath, *incremental); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(configPath, sqliteOverride, outOverride string) error {
+func run(configPath, sqliteOverride, outOverride string, incremental bool) error {
 	cfg, err := loadConfig(configPath)
 	if err != nil {
 		return err
@@ -98,8 +99,10 @@ func run(configPath, sqliteOverride, outOverride string) error {
 		return errors.New("no themes found in SQLite database")
 	}
 
-	if err := os.RemoveAll(cfg.VectorDBPath); err != nil {
-		return fmt.Errorf("remove existing vector DB directory: %w", err)
+	if !incremental {
+		if err := os.RemoveAll(cfg.VectorDBPath); err != nil {
+			return fmt.Errorf("remove existing vector DB directory: %w", err)
+		}
 	}
 	if err := os.MkdirAll(cfg.VectorDBPath, 0o755); err != nil {
 		return fmt.Errorf("create vector DB directory: %w", err)
@@ -110,30 +113,52 @@ func run(configPath, sqliteOverride, outOverride string) error {
 	if err != nil {
 		return fmt.Errorf("create persistent chromem DB: %w", err)
 	}
-	collection, err := db.CreateCollection(cfg.CollectionName, map[string]string{
+	metadata := map[string]string{
 		"source":          cfg.SQLitePath,
 		"embedding_model": cfg.EmbeddingAPI.Model,
-	}, embedder.embed)
+	}
+	var collection *chromem.Collection
+	if incremental {
+		collection, err = db.GetOrCreateCollection(cfg.CollectionName, metadata, embedder.embed)
+	} else {
+		collection, err = db.CreateCollection(cfg.CollectionName, metadata, embedder.embed)
+	}
 	if err != nil {
 		return fmt.Errorf("create collection: %w", err)
 	}
 
 	ctx := context.Background()
 	total := 0
+	skipped := 0
 	for start := 0; start < len(records); start += cfg.BatchSize {
 		end := min(start+cfg.BatchSize, len(records))
 		docs := make([]chromem.Document, 0, end-start)
 		for _, record := range records[start:end] {
-			docs = append(docs, documentFromTheme(record))
+			doc := documentFromTheme(record)
+			if incremental {
+				if _, err := collection.GetByID(ctx, doc.ID); err == nil {
+					skipped++
+					continue
+				}
+			}
+			docs = append(docs, doc)
+		}
+		if len(docs) == 0 {
+			log.Printf("embedded %d/%d themes (%d skipped)", total, len(records), skipped)
+			continue
 		}
 		if err := collection.AddDocuments(ctx, docs, cfg.Concurrency); err != nil {
 			return fmt.Errorf("add documents %d-%d: %w", start+1, end, err)
 		}
 		total += len(docs)
-		log.Printf("embedded %d/%d themes", total, len(records))
+		log.Printf("embedded %d/%d themes (%d skipped)", total, len(records), skipped)
 	}
 
-	log.Printf("created vector DB at %s with collection %q and %d documents", cfg.VectorDBPath, cfg.CollectionName, total)
+	if incremental {
+		log.Printf("updated vector DB at %s with collection %q: %d embedded, %d skipped", cfg.VectorDBPath, cfg.CollectionName, total, skipped)
+	} else {
+		log.Printf("created vector DB at %s with collection %q and %d documents", cfg.VectorDBPath, cfg.CollectionName, total)
+	}
 	return nil
 }
 
@@ -234,6 +259,7 @@ func loadThemes(sqlitePath string) ([]themeRecord, error) {
 			source_file,
 			themePrerequisiteSkills
 		FROM themes
+		WHERE missing = 0
 		ORDER BY id
 	`)
 	if err != nil {
