@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  AlertTriangle,
   BookOpen,
   ChevronLeft,
   ChevronRight,
@@ -46,6 +47,7 @@ function App() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [favoriteIds, setFavoriteIds] = useState(() => readFavorites())
   const [showFavorites, setShowFavorites] = useState(false)
+  const [showDataNotice, setShowDataNotice] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const favoriteKey = showFavorites ? favoriteIds.join(',') : ''
@@ -184,6 +186,27 @@ function App() {
 
   return (
     <main className="app-shell">
+      {showDataNotice && (
+        <div className="startup-notice" role="presentation" onClick={() => setShowDataNotice(false)}>
+          <div
+            className="startup-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="startup-notice-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <AlertTriangle size={24} aria-hidden="true" />
+            <div>
+              <h2 id="startup-notice-title">Data may not be up to date</h2>
+              <p>Theme availability can change. Check missing markers and confirm details at fyp-gc.uestc.edu.cn before making a decision.</p>
+            </div>
+            <button type="button" className="primary-button" onClick={() => setShowDataNotice(false)}>
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
+
       <section className="search-band">
         <div className="search-header">
           <div className="search-copy">

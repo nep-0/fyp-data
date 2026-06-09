@@ -8,6 +8,55 @@
   color: #1f2937;
 }
 
+.startup-notice {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.42);
+  padding: 18px;
+}
+
+.startup-dialog {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  width: min(460px, 100%);
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2937;
+  padding: 20px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+.startup-dialog > svg {
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+.startup-dialog h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.startup-dialog p {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.startup-dialog .primary-button {
+  grid-column: 1 / -1;
+  justify-self: end;
+  min-width: 104px;
+}
+
 .search-band {
   border-bottom: 1px solid #d8dee9;
   background: #ffffff;
