@@ -9,6 +9,7 @@
     "api_key": "",
     "requests_per_minute": 60,
     "request_timeout_seconds": 120,
-    "cache_size": 256
+    "cache_size": 256,
+    "cache_path": "embedding-cache.gob"
   }
 }
