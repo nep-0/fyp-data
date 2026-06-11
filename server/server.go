@@ -1,13 +1,18 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 
 	"fyp-data/config"
 	"fyp-data/embedding"
@@ -21,6 +26,7 @@ type App struct {
 	vector    *chromem.Collection
 	vectorErr string
 	labels    dictionaryLabels
+	embedder  *embedding.Client
 }
 
 func Run(configPath string) error {
@@ -32,9 +38,38 @@ func Run(configPath string) error {
 
 	mux := http.NewServeMux()
 	a.routes(mux)
+	httpServer := &http.Server{
+		Addr:    a.cfg.ListenAddr,
+		Handler: logRequests(mux),
+	}
+	sigCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- httpServer.ListenAndServe()
+	}()
 
 	log.Printf("serving API on http://%s", a.cfg.ListenAddr)
-	return http.ListenAndServe(a.cfg.ListenAddr, logRequests(mux))
+	select {
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	case <-sigCtx.Done():
+		log.Printf("shutdown signal received, stopping server")
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("shutdown HTTP server: %w", err)
+	}
+	if err := <-errCh; err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
 }
 
 func New(configPath string) (*App, error) {
@@ -66,7 +101,8 @@ func New(configPath string) (*App, error) {
 		} else {
 			var embed chromem.EmbeddingFunc
 			if config.EmbeddingConfigured(cfg.EmbeddingAPI) {
-				embed = embedding.NewClient(cfg.EmbeddingAPI).Embed
+				a.embedder = embedding.NewClient(cfg.EmbeddingAPI)
+				embed = a.embedder.Embed
 			}
 			a.vector = vectorDB.GetCollection(cfg.CollectionName, embed)
 			if a.vector == nil {
@@ -78,7 +114,14 @@ func New(configPath string) (*App, error) {
 }
 
 func (a *App) Close() error {
-	return a.sqlite.Close()
+	var err error
+	if a.embedder != nil {
+		err = errors.Join(err, a.embedder.SaveCache())
+	}
+	if a.sqlite != nil {
+		err = errors.Join(err, a.sqlite.Close())
+	}
+	return err
 }
 
 func (a *App) routes(mux *http.ServeMux) {

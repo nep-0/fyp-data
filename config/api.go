@@ -21,6 +21,7 @@ type Embedding struct {
 	RequestsPerMinute  int    `json:"requests_per_minute"`
 	RequestTimeoutSecs int    `json:"request_timeout_seconds"`
 	CacheSize          int    `json:"cache_size"`
+	CachePath          string `json:"cache_path"`
 }
 
 func LoadAPI(path string) (API, error) {
@@ -62,6 +63,9 @@ func (cfg *Embedding) ApplyDefaults() {
 	}
 	if cfg.CacheSize == 0 {
 		cfg.CacheSize = 256
+	}
+	if cfg.CachePath == "" {
+		cfg.CachePath = "embedding-cache.gob"
 	}
 }
 
