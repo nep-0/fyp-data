@@ -472,6 +472,7 @@ function ThemeCard({ item, active, favorite, missing, onClick, onToggleFavorite 
             <User size={15} aria-hidden="true" />
             {theme.teacherPinyin || theme.teacherName || 'Unknown teacher'}
           </span>
+          {teacherRank(theme) && <span className="rank-badge">{teacherRank(theme)}</span>}
           <span>
             <GraduationCap size={15} aria-hidden="true" />
             {labelFor(theme, 'themeProjectType') || 'Project'}
@@ -503,7 +504,7 @@ function ThemeDetail({ theme, favorite, onClose, onToggleFavorite }) {
   const badges = [
     labelFor(theme, 'themeType'),
     labelFor(theme, 'themeProjectType'),
-    labelFor(theme, 'themeState'),
+    departmentName(theme),
     isMissing(theme) ? 'Missing' : '',
   ].filter(Boolean)
 
@@ -536,7 +537,10 @@ function ThemeDetail({ theme, favorite, onClose, onToggleFavorite }) {
         <div className="avatar">{initials(theme.teacherPinyin || theme.teacherName)}</div>
         <div>
           <h3>{theme.teacherPinyin || theme.teacherName || 'Unknown teacher'}</h3>
-          <p>{theme.teacherName && theme.teacherPinyin ? theme.teacherName : theme.deptName_en || theme.deptName}</p>
+          <div className="teacher-subline">
+            <p>{theme.teacherName && theme.teacherPinyin ? theme.teacherName : theme.deptName_en || theme.deptName}</p>
+            {teacherRank(theme) && <span className="rank-badge">{teacherRank(theme)}</span>}
+          </div>
         </div>
       </div>
 
@@ -658,6 +662,14 @@ function labelFor(theme, field) {
 
 function programmes(theme) {
   return labelFor(theme, 'themeProgramme') || theme.themeProgramme
+}
+
+function teacherRank(theme) {
+  return labelFor(theme, 'extendJb') || theme.extendJb
+}
+
+function departmentName(theme) {
+  return theme.deptName_en || theme.deptName
 }
 
 function plainText(html) {
