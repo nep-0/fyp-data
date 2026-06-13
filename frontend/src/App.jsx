@@ -29,6 +29,9 @@ const FILTER_DEFS = [
   { key: 'theme_type', dictType: 'theme_type', label: 'Theme type' },
 ]
 
+const AUX_DICTS = [{ key: 'teacher_rank', dictType: 'extend_jb_dict' }]
+const DICT_DEFS = [...FILTER_DEFS, ...AUX_DICTS]
+
 function App() {
   const [health, setHealth] = useState(null)
   const [filters, setFilters] = useState({})
@@ -63,7 +66,7 @@ function App() {
       try {
         const [healthData, ...dictResponses] = await Promise.all([
           api('/health'),
-          ...FILTER_DEFS.map((def) =>
+          ...DICT_DEFS.map((def) =>
             api(`/dictionaries?type=${encodeURIComponent(def.dictType)}&limit=500`),
           ),
         ])
@@ -73,7 +76,10 @@ function App() {
           FILTER_DEFS.reduce((next, def, index) => {
             next[def.key] = dictResponses[index].rows || []
             return next
-          }, {}),
+          }, AUX_DICTS.reduce((next, def, auxIndex) => {
+            next[def.key] = dictResponses[FILTER_DEFS.length + auxIndex].rows || []
+            return next
+          }, {})),
         )
         setSemantic(Boolean(healthData.semantic_available))
       } catch (err) {
@@ -444,6 +450,7 @@ function App() {
           <ThemeDetail
             theme={selected}
             favorite={selected ? favoriteIds.includes(String(selected.id)) : false}
+            rankOptions={dicts.teacher_rank || []}
             onClose={() => setDetailOpen(false)}
             onToggleFavorite={selected ? () => toggleFavorite(selected.id) : undefined}
           />
@@ -472,7 +479,7 @@ function ThemeCard({ item, active, favorite, missing, onClick, onToggleFavorite 
             <User size={15} aria-hidden="true" />
             {theme.teacherPinyin || theme.teacherName || 'Unknown teacher'}
           </span>
-          {teacherRank(theme) && <span className="rank-badge">{teacherRank(theme)}</span>}
+          {teacherRank(theme) && <RankBadge value={teacherRank(theme)} />}
           <span>
             <GraduationCap size={15} aria-hidden="true" />
             {labelFor(theme, 'themeProjectType') || 'Project'}
@@ -491,7 +498,7 @@ function ThemeCard({ item, active, favorite, missing, onClick, onToggleFavorite 
   )
 }
 
-function ThemeDetail({ theme, favorite, onClose, onToggleFavorite }) {
+function ThemeDetail({ theme, favorite, rankOptions, onClose, onToggleFavorite }) {
   if (!theme) {
     return (
       <aside className="detail-pane center-detail">
@@ -539,7 +546,7 @@ function ThemeDetail({ theme, favorite, onClose, onToggleFavorite }) {
           <h3>{theme.teacherPinyin || theme.teacherName || 'Unknown teacher'}</h3>
           <div className="teacher-subline">
             <p>{theme.teacherName && theme.teacherPinyin ? theme.teacherName : theme.deptName_en || theme.deptName}</p>
-            {teacherRank(theme) && <span className="rank-badge">{teacherRank(theme)}</span>}
+            {teacherRank(theme) && <RankBadge value={teacherRank(theme)} options={rankOptions} />}
           </div>
         </div>
       </div>
@@ -562,6 +569,28 @@ function ThemeDetail({ theme, favorite, onClose, onToggleFavorite }) {
       </section>
     </aside>
   )
+}
+
+function RankBadge({ value, options = [] }) {
+  return (
+    <span className="rank-badge" tabIndex="0">
+      {value}
+      {options.length > 0 && (
+        <span className="rank-tooltip" role="tooltip">
+          {options.map((rank) => (
+            <span key={rank.dictValue} className={displayDictionary(rank) === value ? 'current' : ''}>
+              <RankIcon />
+              {displayDictionary(rank)}
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  )
+}
+
+function RankIcon() {
+  return <User size={15} aria-hidden="true" />
 }
 
 function Info({ icon, label, value }) {
@@ -620,7 +649,7 @@ function matchesFilters(theme, filters) {
   return Object.entries(filters).every(([key, value]) => {
     if (!value) return true
     if (key === 'subject_area') return theme.themeSubjectArea === value
-    if (key === 'programme') return theme.themeProgramme.split(',').map((part) => part.trim()).includes(value)
+    if (key === 'programme') return String(theme.themeProgramme || '').split(',').map((part) => part.trim()).includes(value)
     if (key === 'project_type') return theme.themeProjectType === value
     if (key === 'theme_type') return theme.themeType === value
     return true

@@ -657,6 +657,7 @@
 }
 
 .rank-badge {
+  position: relative;
   display: inline-flex;
   align-items: center;
   width: fit-content;
@@ -669,6 +670,59 @@
   font-weight: 700;
   line-height: 1;
   padding: 3px 8px;
+}
+
+.rank-badge:focus-visible {
+  outline: 2px solid #94a3b8;
+  outline-offset: 2px;
+}
+
+.rank-tooltip {
+  position: absolute;
+  z-index: 12;
+  left: 0;
+  bottom: calc(100% + 7px);
+  display: none;
+  min-width: 176px;
+  border: 1px solid #d8dee9;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475569;
+  padding: 8px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+}
+
+.rank-tooltip span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+
+.rank-tooltip svg {
+  color: #64748b;
+  flex: 0 0 auto;
+}
+
+.rank-tooltip span.current {
+  border-radius: 6px;
+  background: #eef2f7;
+  color: #111827;
+  font-weight: 800;
+}
+
+.rank-tooltip span.current svg {
+  color: #0f766e;
+}
+
+.rank-badge:hover .rank-tooltip,
+.rank-badge:focus .rank-tooltip,
+.rank-badge:focus-within .rank-tooltip {
+  display: block;
 }
 
 .detail-overlay {
